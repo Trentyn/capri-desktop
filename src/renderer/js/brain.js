@@ -8,6 +8,10 @@ const HACKING_TOOLS = new Set(['Bash', 'PowerShell', 'WebFetch', 'WebSearch', 'A
 const WORKING_EVERY = 20; // say something about progress every N tool calls
 const LONG_JOB_MS = 8 * 60 * 1000; // a job this long (or this busy) earns the whole satellite sequence
 const LONG_JOB_ACTIONS = 50;
+// Interrupted (Esc, Ctrl+C, terminal closed), Claude sends no Stop: a working session silent this
+// long is over. Long enough for a slow command; a permission prompt waits for you as long as it takes.
+const STALE_WORK_MS = 20 * 60 * 1000;
+const FORGET_MS = 12 * 60 * 60 * 1000; // a session silent this long is forgotten altogether
 
 export class Brain {
   constructor({ capri, panel, voice, host, lang = 'fr' }) {
@@ -21,6 +25,24 @@ export class Brain {
     this.linked = true;      // has a Claude Code event ever reached her (app.js sets it from the config)
     this.onLinked = null;
     this.onShowcase = null; // the demo's second half (app.js)
+    setInterval(() => this.sweep(), 60 * 1000);
+  }
+
+  // Sessions that went quiet without a Stop or a SessionEnd.
+  sweep(now = Date.now()) {
+    let stopped = false;
+    for (const s of this.sessions.values()) {
+      const silent = now - (s.seen || 0);
+      if (s.working && !s.waiting && silent > STALE_WORK_MS) {
+        s.working = false;
+        stopped = true;
+      }
+      if (!s.working && s !== this.replyFor && silent > FORGET_MS) this.sessions.delete(s.id);
+    }
+    if (stopped && !this.busySessions.length) {
+      this.panel.setTicker(null);
+      if (this.capri.mode === 'work') this.capri.setMode('idle');
+    }
   }
 
   get t() {

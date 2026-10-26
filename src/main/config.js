@@ -37,7 +37,10 @@ function save(patch) {
   cache = { ...load(), ...patch };
   try {
     fs.mkdirSync(path.dirname(file()), { recursive: true });
-    fs.writeFileSync(file(), JSON.stringify(cache, null, 2));
+    // written aside then swapped in: a crash mid-write can't leave a half-written config
+    const tmp = `${file()}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(cache, null, 2));
+    fs.renameSync(tmp, file());
   } catch (err) {
     console.error('[capri] could not save config:', err.message);
   }

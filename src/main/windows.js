@@ -28,6 +28,7 @@ function startWindowWatch({ overlay, onUpdate }) {
   };
 
   const start = () => {
+    const startedAt = Date.now();
     child = spawn('powershell.exe', [
       '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
       '-File', SCRIPT, String(self), String(process.pid),
@@ -51,6 +52,8 @@ function startWindowWatch({ overlay, onUpdate }) {
     child.stderr.on('data', (d) => console.error('[capri] window watch:', String(d).trim()));
     child.on('exit', () => {
       child = null;
+      // only give up on a helper that keeps dying right away, not on one that ran for a while (sleep, hibernation...)
+      if (Date.now() - startedAt > 60 * 1000) restarts = 0;
       if (!stopped && restarts++ < 3) setTimeout(start, 3000);
     });
   };

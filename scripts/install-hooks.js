@@ -67,6 +67,11 @@ function readSettings(file) {
   }
 }
 
+// The files a Capri hook command runs (the hook script, and Capri's executable when it runs it as node).
+function commandFiles(command) {
+  return [...String(command).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+}
+
 function isCapriGroup(group) {
   return Array.isArray(group?.hooks) && group.hooks.some((h) => String(h.command || '').includes(MARK));
 }
@@ -124,10 +129,15 @@ function status() {
   const file = settingsPath();
   try {
     const settings = readSettings(file);
-    const events = Object.entries(settings.hooks || {})
-      .filter(([, groups]) => Array.isArray(groups) && groups.some(isCapriGroup))
-      .map(([event]) => event);
-    return { file, installed: events.length > 0, events };
+    const groups = Object.entries(settings.hooks || {})
+      .filter(([, list]) => Array.isArray(list) && list.some(isCapriGroup));
+    const events = groups.map(([event]) => event);
+    // installed from a clone that moved, or before the app was installed elsewhere: the hooks are
+    // there but point at files that are gone, so they do nothing. Counts as not installed.
+    const stale = groups.some(([, list]) => list.filter(isCapriGroup)
+      .some((g) => g.hooks.some((h) => String(h.command || '').includes(MARK)
+        && commandFiles(h.command).some((f) => !fs.existsSync(f)))));
+    return { file, installed: events.length > 0 && !stale, stale, events };
   } catch (err) {
     return { file, installed: false, events: [], error: err.message };
   }
@@ -143,7 +153,8 @@ if (require.main === module) {
       console.log(r.removed ? `Capri hooks removed from ${r.file}` : `No Capri hooks found in ${r.file}`);
     } else if (arg === '--status') {
       const r = status();
-      console.log(r.installed ? `Installed (${r.events.join(', ')}) in ${r.file}` : `Not installed (${r.file})`);
+      if (r.stale) console.log(`Installed in ${r.file}, but pointing at files that are gone: run install again`);
+      else console.log(r.installed ? `Installed (${r.events.join(', ')}) in ${r.file}` : `Not installed (${r.file})`);
     } else {
       const r = install();
       console.log(`Capri hooks installed for ${r.events} events in ${r.file}`);
