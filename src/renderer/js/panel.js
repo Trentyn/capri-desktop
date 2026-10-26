@@ -4,20 +4,6 @@ import { clamp, reducedMotion } from './util.js';
 
 const NOISE = '▚▞▙▟░▒#%&/\\<>01XZ';
 
-// Her faces, frames of her from the show (tools/build-cutins.py). A message can ask for one;
-// otherwise it goes with what kind of message it is.
-const FACE_DIR = '../../assets/capri/';
-export const FACES = {
-  calm: 'face-calm.png',   // watching, mouth shut
-  aside: 'face-aside.png', // turned away: a sigh, thinking
-  smug: 'face-smug.png',   // the fang grin, head cocked
-  wide: 'face-wide.png',   // eyes gone round: surprised
-  look: 'face-look.png',   // looking right at you
-  laugh: 'face-laugh.png', // mouth wide open
-  many: 'face-many.png',   // all her eyes on you
-  grin: 'capri-face.png',
-};
-const KIND_FACE = { alert: 'many', done: 'look', error: 'laugh', work: 'calm', idle: 'calm' };
 const PRIORITY = { info: 1, idle: 1, work: 2, done: 3, error: 3, alert: 4 };
 const DECODE_STEP_MS = 28;
 
@@ -27,7 +13,7 @@ export class Panel {
     this.tickerEl = ticker;
     this.labels = labels;
     this.line = panel.querySelector('.panel__line');
-    this.portrait = panel.querySelector('.panel__face img');
+    this.wire = panel.querySelector('.panel__wire');
     this.quote = panel.querySelector('.panel__quote');
     this.reply = panel.querySelector('.panel__reply');
     this.actions = panel.querySelector('.panel__actions');
@@ -52,9 +38,6 @@ export class Panel {
     this.tickerTimer = null;
 
     this.el.addEventListener('click', () => this.hide());
-    this.portrait.addEventListener('animationend', (e) => {
-      if (e.animationName === 'face-swap') this.portrait.classList.remove('is-swapping');
-    });
   }
 
   get visible() {
@@ -66,8 +49,7 @@ export class Panel {
   // reply: Claude's whole answer, in a block that scrolls
   // actions: buttons, [{ id, label, primary }]; clicking one calls onAction(id)
   // guide: the quote is an explanation, shown whole
-  // badge: the word in the corner, instead of the one for its kind
-  // face: her expression (a key of FACES), instead of the one for its kind
+  // badge: the word on the wire, instead of the one for its kind
   say(msg) {
     const cur = this.current;
     if (cur && this.visible && cur.kind !== msg.kind && PRIORITY[cur.kind] > PRIORITY[msg.kind] && performance.now() - cur.at < 2600) {
@@ -79,8 +61,7 @@ export class Panel {
     clearTimeout(this.hideTimer);
 
     this.el.dataset.kind = msg.kind;
-    this.setFace(msg.face || KIND_FACE[msg.kind] || 'grin');
-    this.tag.textContent = msg.tag || '';
+    this.tag.textContent = msg.tag || 'capri'; // who it's about: the project, else herself
     this.state.textContent = msg.badge || this.labels.state[msg.kind] || '';
     this.quote.textContent = msg.quote || '';
     this.quote.hidden = !msg.quote;
@@ -104,6 +85,10 @@ export class Panel {
     this.summary.textContent = msg.summary || '';
     this.summary.hidden = !msg.summary;
     this.renderLog(msg.log || []);
+    // only her line: no wire under it
+    const wired = Boolean(msg.quote || msg.reply || msg.summary || msg.log?.length || msg.actions?.length);
+    this.wire.hidden = !wired;
+    this.el.classList.toggle('has-wire', wired);
 
     this.tickerEl.hidden = true;
     this.leaving = false;
@@ -117,20 +102,15 @@ export class Panel {
     return true;
   }
 
-  // Change her expression; the swap glitches across a couple of drawings.
-  setFace(name) {
-    const src = FACE_DIR + (FACES[name] || FACES.grin);
-    if (this.portrait.getAttribute('src') === src) return;
-    this.portrait.setAttribute('src', src);
-    if (reducedMotion.matches) return;
-    this.portrait.classList.remove('is-swapping');
-    void this.portrait.offsetWidth; // restart the animation
-    this.portrait.classList.add('is-swapping');
-  }
-
   // Refresh the log of the message on screen without re-announcing it.
   updateLog(log) {
-    if (this.current && this.visible) this.renderLog(log);
+    if (!this.current || !this.visible) return;
+    this.renderLog(log);
+    if (log.length && this.wire.hidden) {
+      this.wire.hidden = false;
+      this.el.classList.add('has-wire');
+      this.place();
+    }
   }
 
   renderLog(entries) {

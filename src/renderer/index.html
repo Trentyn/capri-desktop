@@ -19,23 +19,18 @@
 
   <aside id="panel" class="panel" data-kind="info" hidden aria-live="polite">
     <div class="panel__frame">
-      <div class="panel__plate">
-        <figure class="panel__face" aria-hidden="true">
-          <img src="../../assets/capri/capri-face.png" alt="">
-        </figure>
-        <div class="panel__body">
-          <header class="panel__meta">
-            <span class="panel__who">Capri</span>
-            <span class="panel__tag"></span>
-            <span class="panel__state"></span>
-          </header>
-          <p class="panel__line"></p>
-          <p class="panel__quote" hidden></p>
-          <div class="panel__reply" hidden></div>
-          <p class="panel__summary" hidden></p>
-          <ol class="panel__log" hidden></ol>
-          <div class="panel__actions" hidden></div>
-        </div>
+      <!-- what she says -->
+      <div class="panel__say">
+        <p class="panel__line"></p>
+      </div>
+      <!-- what came over the wire: Claude's words, the numbers, the buttons -->
+      <div class="panel__wire" hidden>
+        <p class="panel__meta"><span class="panel__tag"></span><span class="panel__state"></span></p>
+        <p class="panel__quote" hidden></p>
+        <div class="panel__reply" hidden></div>
+        <p class="panel__summary" hidden></p>
+        <ol class="panel__log" hidden></ol>
+        <div class="panel__actions" hidden></div>
       </div>
       <div class="panel__tail" aria-hidden="true"></div>
     </div>

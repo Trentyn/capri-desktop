@@ -29,6 +29,25 @@
   font-display: block;
 }
 
+@font-face {
+  font-family: 'Russo One';
+  src: url('../../../node_modules/@fontsource/russo-one/files/russo-one-latin-400-normal.woff2') format('woff2');
+  font-display: block;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Russo One';
+  src: url('../../../node_modules/@fontsource/russo-one/files/russo-one-latin-ext-400-normal.woff2') format('woff2');
+  font-display: block;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Russo One';
+  src: url('../../../node_modules/@fontsource/russo-one/files/russo-one-cyrillic-400-normal.woff2') format('woff2');
+  font-display: block;
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
 /* Russian: Chakra Petch has no Cyrillic, JetBrains Mono's stands in for it in the display type too */
 @font-face {
   font-family: 'Chakra Petch';
@@ -65,6 +84,7 @@
   --blue: oklch(0.6 0.2 260);
 
   --font-display: 'Chakra Petch', 'Segoe UI', sans-serif;
+  --font-say: 'Russo One', 'Segoe UI', sans-serif; /* her lines in the panel: it has Cyrillic */
   --font-mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
 
   --text-line: clamp(15px, calc(0.45vw + 8.5px), 19px);
@@ -133,22 +153,27 @@ body {
 
 /* ---------- transmission panel ---------- */
 
+/* Two pieces, knocked out of register with each other: what she says, hard-edged on paper
+   like a manga balloon, and below it, offset, what came over the wire (Claude's words,
+   the numbers) on ink. No portrait, no chrome: the colours say what kind of message it is. */
 .panel {
   --accent: var(--violet);
+  --say-bg: var(--paper);
+  --say-ink: var(--ink);
+  --say-shadow: var(--violet);
   position: absolute;
   left: 0;
   top: 0;
   z-index: 3;
   width: clamp(290px, 21vw, 380px);
   color: var(--paper);
-  filter: drop-shadow(6px 6px 0 var(--violet));
   will-change: transform;
 }
 
 .panel[data-kind='work'] { --accent: var(--green); }
 .panel[data-kind='done'] { --accent: var(--green); }
-.panel[data-kind='alert'] { --accent: var(--red); }
-.panel[data-kind='error'] { --accent: var(--red); }
+.panel[data-kind='alert'],
+.panel[data-kind='error'] { --accent: var(--red); --say-bg: var(--red); --say-ink: var(--paper); --say-shadow: var(--ink); }
 .panel[data-kind='idle'] { --accent: var(--paper-3); }
 
 .panel__frame {
@@ -157,6 +182,11 @@ body {
 
 .panel.is-entering .panel__frame {
   animation: transmit-in 210ms steps(3, jump-end) both;
+}
+
+/* the wire comes in a beat after her: intercepted, not part of her balloon */
+.panel.is-entering .panel__wire {
+  animation: transmit-in 180ms steps(3, jump-end) 120ms both;
 }
 
 .panel.is-leaving .panel__frame {
@@ -175,109 +205,78 @@ body {
   100% { clip-path: inset(49% 50% 49% 50%); }
 }
 
-.panel__plate {
+/* the shape is drawn by ::before so the drop shadow (outside the clip) follows its cut corner */
+.panel__say {
   position: relative;
-  display: grid;
-  grid-template-columns: 58px 1fr;
-  gap: 12px;
-  padding: 14px 16px 16px 14px;
+  padding: 11px 18px 12px 15px;
+  color: var(--say-ink);
+  filter: drop-shadow(5px 5px 0 var(--say-shadow));
+}
+
+.panel__say::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--say-bg);
+  clip-path: polygon(0 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% 100%, 0 100%);
+}
+
+.panel[data-kind='alert'] .panel__say {
+  animation: say-jolt 1.4s steps(1, end) infinite;
+}
+
+@keyframes say-jolt {
+  0% { transform: translate(2px, 0); }
+  6% { transform: translate(-3px, 1px); }
+  12% { transform: none; }
+}
+
+.panel__line {
+  margin: 0;
+  font-family: var(--font-say);
+  font-size: calc(var(--text-line) + 3px);
+  line-height: 1.15;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+}
+
+.panel__wire {
+  margin: 8px 0 0 18px;
+  padding: 9px 14px 12px;
   background: var(--ink);
-  /* chamfered corners and one jagged bite in the top edge */
-  clip-path: polygon(
-    0 var(--cut), var(--cut) 0,
-    61% 0, 63% 7px, 65.5% 0,
-    calc(100% - 30px) 0, 100% 30px,
-    100% 100%, 22px 100%, 0 calc(100% - 22px)
-  );
-}
-
-.panel__face {
-  margin: 2px 0 0;
-  width: 58px;
-  height: 58px;
-  background: var(--violet);
-  clip-path: polygon(14% 0, 100% 0, 100% 80%, 84% 100%, 0 100%, 0 16%);
-}
-
-.panel__face img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  clip-path: polygon(14% 4%, 96% 4%, 96% 79%, 82% 96%, 4% 96%, 4% 18%);
-}
-
-.panel.is-entering .panel__face img,
-.panel[data-kind='alert'] .panel__face img {
-  animation: face-glitch 600ms steps(1, end) 1;
-}
-
-.panel[data-kind='alert'] .panel__face img {
-  animation-iteration-count: infinite;
-  animation-duration: 1.4s;
-}
-
-@keyframes face-glitch {
-  0% { transform: translate(3px, 0); }
-  12% { transform: translate(-4px, 1px); }
-  24% { transform: none; }
-  60% { transform: translate(2px, -1px); }
-  68% { transform: none; }
-}
-
-/* her expression changing: three drawings, knocked sideways, squashed, back */
-.panel__face img.is-swapping {
-  animation: face-swap 170ms steps(1, end) 1;
-}
-
-@keyframes face-swap {
-  0% { transform: translateX(-6px) skewX(-10deg); opacity: 0.7; }
-  33% { transform: translateX(5px) scaleY(0.82); }
-  66% { transform: translateX(-2px); }
-  100% { transform: none; }
-}
-
-.panel__body {
-  min-width: 0;
+  filter: drop-shadow(-4px 4px 0 var(--accent));
 }
 
 .panel__meta {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 6px;
+  margin: 0 0 6px;
   font-family: var(--font-mono);
   font-size: var(--text-meta);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   white-space: nowrap;
+  color: var(--paper-3);
 }
 
-.panel__who {
-  color: var(--paper);
-  font-weight: 600;
+.panel__meta::before {
+  content: '//';
+  color: var(--accent);
 }
 
 .panel__tag {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--paper-3);
-}
-
-.panel__tag:not(:empty)::before {
-  content: '/ ';
-  color: var(--violet);
 }
 
 .panel__state {
   margin-left: auto;
-  padding: 2px 6px 1px;
-  background: var(--accent);
-  color: var(--ink);
+  color: var(--accent);
   font-weight: 600;
   letter-spacing: 0.12em;
-  clip-path: polygon(5px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  text-transform: uppercase;
 }
 
 .panel[data-kind='alert'] .panel__state {
@@ -289,24 +288,11 @@ body {
   100% { opacity: 0.25; }
 }
 
-.panel__line {
-  margin: 0;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: var(--text-line);
-  line-height: 1.22;
-  letter-spacing: -0.01em;
-  text-wrap: pretty;
-  overflow-wrap: anywhere;
-}
-
 .panel__quote {
-  margin: 9px 0 0;
-  padding-left: 9px;
-  border-left: 2px solid var(--violet);
+  margin: 0;
   font-family: var(--font-mono);
-  font-size: var(--text-data);
-  line-height: 1.5;
+  font-size: calc(var(--text-data) + 1px);
+  line-height: 1.55;
   color: var(--paper-2);
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -320,12 +306,11 @@ body {
 }
 
 .panel__reply {
-  margin: 9px 0 0;
-  padding: 2px 10px 2px 9px;
+  margin: 0;
+  padding: 0 8px 0 0;
   max-height: min(44vh, 420px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  border-left: 2px solid var(--accent);
   font-family: var(--font-mono);
   font-size: calc(var(--text-data) + 1px);
   line-height: 1.6;
@@ -386,16 +371,12 @@ body {
 }
 
 .panel__summary {
-  margin: 9px 0 0;
+  margin: 8px 0 0;
   font-family: var(--font-mono);
   font-size: var(--text-data);
   font-weight: 600;
   letter-spacing: 0.04em;
   color: var(--accent);
-}
-
-.panel__summary::before {
-  content: '◆ ';
 }
 
 .panel__log {
@@ -444,14 +425,19 @@ body {
   width: 30px;
   height: 22px;
   margin-left: -15px;
-  background: var(--ink);
+  background: var(--say-bg); /* hangs off her balloon, or off the wire when there is one */
   clip-path: polygon(0 0, 100% 0, 62% 100%, 50% 48%, 30% 72%);
+}
+
+.panel.has-wire .panel__tail {
+  background: var(--ink);
 }
 
 .panel[data-below='true'] .panel__tail {
   top: auto;
   bottom: calc(100% - 1px);
   transform: scaleY(-1);
+  background: var(--say-bg); /* below her: the balloon is on top, nearest to her */
 }
 
 /* ---------- ticker ---------- */
@@ -518,7 +504,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .panel.is-entering .panel__frame,
   .panel.is-leaving .panel__frame,
-  .panel__face img,
+  .panel.is-entering .panel__wire,
+  .panel[data-kind='alert'] .panel__say,
   .ticker.is-flash .ticker__plate,
   .ticker__dot,
   .panel[data-kind='alert'] .panel__state {

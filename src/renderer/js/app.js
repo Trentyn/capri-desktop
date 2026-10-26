@@ -30,6 +30,7 @@ async function boot() {
     ...CUTINS.map((name) => loadImage(`../../assets/capri/cutin-${name}.png`)),
     document.fonts.load('600 16px "Chakra Petch"'),
     document.fonts.load('400 11px "JetBrains Mono"'),
+    document.fonts.load('400 16px "Russo One"', 'aя'),
   ]);
   document.documentElement.lang = config.lang;
 
